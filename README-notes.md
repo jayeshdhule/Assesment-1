@@ -1,50 +1,34 @@
 # README-notes
 
-What I changed
+Summary
 
-- Implemented commission calculation logic and input validation in `api/Controllers/CommisionController.cs`.
-- Removed duplicate controller/DTO code from `api/Program.cs` (keeps startup only).
-- Enabled CORS to allow `http://localhost:3000` in development.
-- Updated test project to target `net8.0` and added `Microsoft.NET.Test.Sdk` and a project reference to the API project.
-- Added `CommissionCalculationTests.cs` with unit tests covering normal and invalid inputs.
--- Previously added temporary safeguards in `api/AvalphaTechnologies.CommissionCalculator.csproj` have been removed. The test project was moved to a top-level `tests/` folder and the API project now uses the default SDK behavior.
+- Commission calculator backend implemented in `api/` (controller, validation, DTO response).
+- Frontend `ui/` wired to call the API and display formatted GBP results.
+- Unit tests located in `tests/AvalphaTechnologies.CommissionCalculator.Tests` (xUnit).
 
-How to run (backend)
+Quick start — backend
 
-1. Open a PowerShell terminal.
-2. Run the API from the `api` folder:
+1. From repository root run:
 
 ```powershell
 cd api
 dotnet run --project AvalphaTechnologies.CommissionCalculator.csproj
 ```
 
-The API will listen on the URLs configured in `Properties/launchSettings.json` (e.g. `https://localhost:5000` and `http://localhost:5111`). The controller endpoint is POST `/Commision`.
+The API exposes POST `/Commision` and listens on the URLs in `Properties/launchSettings.json` (typically `https://localhost:5000` and `http://localhost:5111`).
 
-Example request body (JSON):
+Quick start — tests
 
-```json
-{
-  "localSalesCount": 10,
-  "foreignSalesCount": 10,
-  "averageSaleAmount": 100.00
-}
-```
-
-How to run tests (backend)
-
-1. From the repository root run:
+1. From repository root run:
 
 ```powershell
 cd tests\AvalphaTechnologies.CommissionCalculator.Tests
 dotnet test -c Debug
 ```
 
-All tests should pass (there are unit tests validating the commission logic).
+Quick start — frontend
 
-How to run (frontend)
-
-1. Open a terminal and run:
+1. From repository root run:
 
 ```powershell
 cd ui
@@ -52,25 +36,39 @@ npm install
 npm start
 ```
 
-2. Open http://localhost:3000 in your browser and use the UI to call the API. The front-end posts to `https://localhost:5000/Commision` by default; you can set `REACT_APP_API_URL` to `http://localhost:5111` or `https://localhost:5000` in `.env` if needed.
+2. Open http://localhost:3000 and use the UI to call the API.
 
 Notes / troubleshooting
 
--- Duplicate assembly attribute errors were encountered earlier because the test project was nested under `api` and MSBuild globs picked up both application and test C# files. This has been resolved by moving the tests to a top-level `tests/` folder and restoring the API project to the default SDK behavior.
+- CORS: during development the API allows requests from `http://localhost:3000`. If you call the API over HTTP and the server is configured to redirect HTTP→HTTPS, browsers may block the OPTIONS preflight (307 redirect). Recommended approaches:
+  - Call the HTTPS URL (e.g. `https://localhost:5000`) and trust the dev certificate once: `dotnet dev-certs https --trust`.
+  - Or run the API in Development without `UseHttpsRedirection()` (currently handled in `Program.cs`).
+- Tests: unit tests are in `tests/AvalphaTechnologies.CommissionCalculator.Tests` and reference the API project.
+- Currency and rounding: monetary amounts use `decimal` and are rounded to 2 decimal places in responses.
 
-- The API uses decimal arithmetic and rounds monetary amounts to 2 decimal places before returning them.
+Business rates used
 
-- Business rates implemented:
-  - Avalpha local: 20%
-  - Avalpha foreign: 35%
-  - Competitor local: 2%
-  - Competitor foreign: 7.55%
+- Avalpha local: 20%
+- Avalpha foreign: 35%
+- Competitor local: 2%
+- Competitor foreign: 7.55%
 
-Follow-ups I can do (pick one or more)
+If you want any follow-ups (add integration tests, add tests to solution, refine UI tests), tell me which one and I will implement it.
 
-- Remove the temporary assembly info generation toggles and move the test project to `tests/` (cleaner project layout).
-- Add integration tests that spin up the in-memory TestServer and call the controller endpoints via HTTP.
-- Improve frontend tests (React Testing Library) to mock API responses and test UI behaviour.
-- Add more unit tests for edge cases (very large values, rounding behavior).
+## Decisions, trade-offs and unfinished work
 
-If you want me to proceed with any of the follow-ups, tell me which one and I'll implement it next.
+- Decisions
+  - Placed the backend in `api/` as a minimal ASP.NET Web API project using controller-based endpoints for clarity and easy unit testing.
+  - Kept the frontend simple (React) and used a simple fetch-based POST for the `/Commision` endpoint to keep the UI dependency-free and easy to reason about.
+
+- Trade-offs
+  - HTTPS vs HTTP in development: to avoid the browser preflight redirect problem we disabled `UseHttpsRedirection()` in Development mode. This makes the local dev experience easier (no need to trust the dev cert) but is less production-like. The alternative is to call the HTTPS endpoint from the frontend and run `dotnet dev-certs https --trust` locally.
+  - Project layout during initial work created nested test files which caused duplicate assembly attribute and build-copy issues; the pragmatic fix was to move tests to a top-level `tests/` folder and restore the API csproj defaults. A cleaner repo layout was prioritized over more invasive project reorganization during the assessment.
+
+- Unfinished / future improvements
+  - Add integration tests (TestServer or WebApplicationFactory) to exercise the controller over HTTP and validate CORS/end-to-end behaviour automatically.
+  - Add the test project to the main solution file (`.sln`) so `dotnet test` at the solution level runs all tests by default.
+  - Improve UI tests to mock API responses and validate error paths (network failures, server errors, validation feedback).
+  - Consider adding OpenAPI/Swagger examples for the `/Commision` endpoint and including sample requests in the repo.
+
+If you'd like me to implement any of these follow-ups, tell me which and I'll proceed.
